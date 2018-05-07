@@ -118,6 +118,25 @@ public class NewsLineActivity extends AppCompatActivity {
                 });
     }
 
+    private void search(String search) {
+        mSearch = search;
+
+        App.getTopHeadlinesEndpoint()
+                .searchTopHeadlines(mPage, mPageSize, mSearch)
+                .enqueue(new Callback<Response>() {
+                    @Override
+                    public void onResponse(Call<Response> call, retrofit2.Response<Response> response) {
+                        mResponse = response.body();
+                        update(mResponse);
+                    }
+
+                    @Override
+                    public void onFailure(Call<Response> call, Throwable t) {
+
+                    }
+                });
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_news_line, menu);
@@ -128,9 +147,8 @@ public class NewsLineActivity extends AppCompatActivity {
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String s) {
-                mSearch = s;
                 mPageSize = mPageStep;
-                loadMore();
+                search(s);
                 return true;
             }
 
