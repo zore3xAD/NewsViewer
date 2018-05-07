@@ -1,11 +1,17 @@
 package com.android.zore3x.newsviewer.activities;
 
+import android.opengl.Visibility;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.SearchView;
 import android.widget.TextView;
 
 import com.android.zore3x.newsviewer.App;
@@ -21,8 +27,16 @@ import retrofit2.Callback;
 
 public class NewsLineActivity extends AppCompatActivity {
 
-    private int mPageSize = 3;
+    private final int mPageStep = 3;
 
+    // переменные необходимые для запроса
+    private String mCountry = "ua"; // регион поиска
+    private String mCategory = null; // категория поиска
+    private String mSearch = null; // ключевое слово
+    private int mPage = 1; // страница
+    private int mPageSize = mPageStep; // количество записей на странице
+
+    // ответ от сервера
     private Response mResponse;
 
     private RecyclerView mNewsLineRecyclerView;
@@ -41,27 +55,13 @@ public class NewsLineActivity extends AppCompatActivity {
         mShowMoreButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                mPageSize += 3;
+                mPageSize += mPageStep;
                 if(mPageSize >= mResponse.getTotalResults()) {
                     mPageSize = mResponse.getTotalResults();
                     mShowMoreButton.setVisibility(View.GONE);
                 }
-                App.getTopHeadlinesEndpoint()
-                        .getTopHeadlines(1, mPageSize, "ru", null, null)
-                        .enqueue(new Callback<Response>() {
 
-                            @Override
-                            public void onResponse(Call<Response> call, retrofit2.Response<Response> response) {
-                                mResponse = response.body();
-                                update(mResponse);
-                                mShowMoreButton.setVisibility(View.GONE);
-                            }
-
-                            @Override
-                            public void onFailure(Call<Response> call, Throwable t) {
-
-                            }
-                        });
+                loadMore();
             }
         });
 
@@ -83,21 +83,8 @@ public class NewsLineActivity extends AppCompatActivity {
             }
         });
 
-        App.getTopHeadlinesEndpoint()
-                .getTopHeadlines(1, mPageSize, "ru", null, null)
-                .enqueue(new Callback<Response>() {
+        loadMore();
 
-            @Override
-            public void onResponse(Call<Response> call, retrofit2.Response<Response> response) {
-                mResponse = response.body();
-                update(mResponse);
-            }
-
-            @Override
-            public void onFailure(Call<Response> call, Throwable t) {
-
-            }
-        });
     }
 
     private void update(Response response) {
@@ -109,5 +96,50 @@ public class NewsLineActivity extends AppCompatActivity {
             mAdapter.notifyDataSetChanged();
         }
         mResultsCountTextView.setText(String.format("%d / %d",mPageSize, response.getTotalResults()));
+    }
+
+    // функция подгрузки новостей
+    private void loadMore() {
+
+        App.getTopHeadlinesEndpoint()
+                .getTopHeadlines(mPage, mPageSize, mCountry, mSearch, mCategory)
+                .enqueue(new Callback<Response>() {
+
+                    @Override
+                    public void onResponse(Call<Response> call, retrofit2.Response<Response> response) {
+                        mResponse = response.body();
+                        update(mResponse);
+                    }
+
+                    @Override
+                    public void onFailure(Call<Response> call, Throwable t) {
+
+                    }
+                });
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_news_line, menu);
+
+
+        MenuItem searchItem = menu.findItem(R.id.app_bar_search);
+        final SearchView searchView = (SearchView)searchItem.getActionView();
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String s) {
+                mSearch = s;
+                mPageSize = mPageStep;
+                loadMore();
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String s) {
+                return false;
+            }
+        });
+
+        return super.onCreateOptionsMenu(menu);
     }
 }
